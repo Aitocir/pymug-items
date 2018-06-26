@@ -1,0 +1,20 @@
+name,target_type,size,weight,type,tags,color
+str,str,num,num,str,list,str
+iron,weapon_base,1,2.5,metal_weapon,made_of_iron;,
+bronze,weapon_base,1,2,metal_weapon,made_of_bronze;,
+bronze,jewelry_base,1,2,metal_jewelry,made_of_bronze;,
+apple,fruit_food_base,1,1,food,apple_food; ,
+rusty,metal_weapon,1,0.9,weapon,; ,
+fine,metal_weapon,1,1,weapon,;,
+fine,metal_jewelry,1,1,jewelry,;,
+red,dye_base,1,1,dye,;,FF0000
+yellow,dye_base,1,1,dye,;,FFFF00
+blue,dye_base,1,1,dye,;,0000FF
+orange,dye_base,1,1,dye,;,FF8000
+green,dye_base,1,1,dye,;,00FF00
+purple,dye_base,1,1,dye,;,8000FF
+black,dye_base,1,1,dye,;,000000
+dark gray,dye_base,1,1,dye,;,404040
+gray,dye_base,1,1,dye,;,808080
+light gray,dye_base,1,1,dye,;,B0B0B0
+white,dye_base,1,1,dye,;,FFFFFF
