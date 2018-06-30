@@ -72,13 +72,18 @@ def compose_item_def(item_name):
         return None
     target_type = core_item['type']
     item_defs = []
+    progressive_name = []
     for options in potential_item_defs[::-1]:
+        found_one = False
         for option in options:
             if option['target_type'] == target_type:
                 item_defs.append(option)
                 target_type = option['type']
+                progressive_name.append(option['name'])
+                found_one = True
                 break
-            print('Adjective "{0}" does not apply to item "{1}"'.format('#TODO: indicate adj name', '#TODO: indicate so far compiled item name'))
+        if not found_one:
+            print('Adjective "{0}" does not apply to item "{1}"'.format(options[0]['name'], ' '.join(progressive_name[::-1])))
             return None
     adj_defs = item_defs[::-1]  #  [x for x in item_defs if x['target_type'] == core_item['type']]
     
