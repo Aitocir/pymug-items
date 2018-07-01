@@ -1,0 +1,14 @@
+[
+{
+    "specific-ingredients": {
+        "pie dough": 1
+    },
+    "typed-ingredients": {
+        "sugar": 1,
+        "fruit": 1
+    },
+    "success": {
+        "{0} pie;fruit:0": 1
+    }
+}
+]

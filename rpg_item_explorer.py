@@ -1,4 +1,5 @@
 import csv
+import json
 import sys
 
 def value_for_type(value, value_type):
@@ -59,6 +60,7 @@ def get_core_item_def(term):
     return core_terms[term]
 
 def compose_item_def(item_name):
+    print('composing {0}...\n'.format(item_name))
     terms = item_name.strip().split()
     potential_item_defs = []
     for term in terms[:-1]:
@@ -70,6 +72,8 @@ def compose_item_def(item_name):
     if not core_item:
         print('Definition for core item "{0}" does not exist!'.format(terms[-1]))
         return None
+    elif len(terms) == 1:
+        return core_item
     target_type = core_item['type']
     item_defs = []
     progressive_name = []
@@ -131,23 +135,131 @@ def compose_item_def(item_name):
         item[prop] = prop_value
     return item
 
+def read_recipe_file(filename):
+    with open(filename) as f:
+        text = f.read()
+    try:
+        body = json.loads(text)
+        return body
+    except:
+        print('Recipe file "{0}" contains invalid JSON'.format(filename))
+        return []
+
+def possible_recipe_signatures(items, counts):
+    sigs = []
+    item_lists = []
+    for i in range(len(items)+1):
+        sig = []
+        for j in range(len(items)):
+            if j < i:
+                sig.append((items[j]['name'], counts[j], items[j]))
+            else:
+                sig.append((items[j]['type'], counts[j], items[j]))
+        sig = sorted(sig)
+        sigs.append(';'.join([x[0]+':'+str(x[1]) for x in sig]))
+        item_lists.append([x[2] for x in sig])
+    return sigs[::-1], item_lists[::-1]
+
+def process_recipe(recipe, items):
+    #  TODO: random, skill, tool, all the fancy stuff really
+    output = {}
+    for item in recipe['success']:
+        if ';' in item:
+            pattern, args = item.split(';')
+            args = args.split(',')
+            params = []
+            for a in args:
+                name, idx = a.split(':')
+                i = items[recipe['itemrefs'].index(name)]
+                print(i)
+                print(i['name'])
+                params.append(i['name'].split()[::-1][int(idx)])
+            output[pattern.format(*params)] = recipe['success'][item]
+        else:
+            output[item] = recipe['success'][item]
+    return output
+
 def main():
+    #
+    #  Load item definitions
+    #
     global adj_terms
     global core_terms
     core_terms = read_def_file(sys.argv[1])
     adj_terms = {}
-    for file in sys.argv[2:]:
+    for file in sys.argv[2:3]:
         addl_adjs = read_def_file(file, True)
         for k in addl_adjs:
             if k not in adj_terms:
                 adj_terms[k] = []
             adj_terms[k].extend(addl_adjs[k])
-    print('definitions loaded!')
+    print('item definitions loaded!')
+    #
+    #  Load recipe definitions
+    #
+    global recipes
+    recipes = {}
+    for file in sys.argv[3:4]:
+        addl_recipes = read_recipe_file(file)
+        #  TODO: re-package recipes into cache format and store
+        for r in addl_recipes:
+            recipe = {}
+            statics = [(x, r['specific-ingredients'][x]) for x in r['specific-ingredients']]
+            vars = [(x, r['typed-ingredients'][x]) for x in r['typed-ingredients']]
+            ingredients = sorted(statics+vars)
+            recipe['signature'] = ';'.join([x[0]+':'+str(x[1]) for x in ingredients])
+            recipe['itemrefs'] = [x[0] for x in ingredients]
+            recipe['constants'] = statics
+            recipe['variables'] = vars
+            recipe['success'] = r['success'] if 'success' in r else {}
+            recipe['failure'] = r['failure'] if 'failure' in r else {}
+            recipe['success_xp'] = r['success_xp'] if 'success_xp' in r else {}
+            recipe['failure_xp'] = r['failure_xp'] if 'failure_xp' in r else {}
+            recipe['tool'] = r['tool'] if 'tool' in r else False
+            recipe['random'] = r['random'] if 'random' in r and 0<r['random']<1 else 1
+            if 'skill' not in r:
+                recipe['skill_name'] = None
+            else:
+                try:
+                    recipe['skill_name'] = r['skill']['name']
+                    recipe['skill_min'] = r['skill']['min'] if 'min' in r['skill'] else 0
+                    recipe['skill_max'] = r['skill']['mastery'] if 'mastery' in r['skill'] else 2**31
+                    recipe['skill_step'] = r['skill']['step'] if 'step' in r['skill'] else 1
+                    recipe['skill_f'] = r['skill']['stepexp'] if 'stepexp' in r['skill'] else 1
+                except:
+                    print('Recipe has missing fields from its skill!')
+                    continue
+            if recipe['signature'] in recipes:
+                print('Recipe being overridden!\nOld: {0}\nNew: {1}'.format(recipes[recipe['signature']], recipe))
+            recipes[recipe['signature']] = recipe
+    print('recipe definitions loaded!')
+    #
+    #  Interpreter loop
+    #
     while True:
-        item_name = input('Enter an item name: ')
-        item_def = compose_item_def(item_name)
-        print(item_def)
-        print()
+        user_input = input('pymug-items> ')
+        cmd = user_input.split()[0]
+        if cmd == 'check':
+            item_name = ' '.join(user_input.split()[1:])
+            item_def = compose_item_def(item_name)
+            print(item_def)
+            print()
+        elif cmd == 'craft':
+            items_text = user_input[len(cmd):].strip()
+            item_descs = [x.strip().split(':') for x in items_text.split(';')]
+            items = [compose_item_def(x[0]) for x in item_descs]
+            counts = [x[1] for x in item_descs]
+            if None in items:
+                print('one of your items is not real!\n')
+                continue
+            possible_recipes, item_lists = possible_recipe_signatures(items, counts)
+            for i in range(len(possible_recipes)):
+                sig = possible_recipes[i]
+                item_list = item_lists[i]
+                if sig in recipes:
+                    #print(recipes[sig]['success'])
+                    print(process_recipe(recipes[sig], item_list))
+                    print()
 
 if __name__ == "__main__":
     main()
